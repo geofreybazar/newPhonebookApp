@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import uniqueValidator from "mongoose-unique-validator";
 
+
 const userSchema = new mongoose.Schema({
   username: {
     type: String,
@@ -13,8 +14,12 @@ const userSchema = new mongoose.Schema({
     {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Contact",
-    },
+    },    
   ],
+  photoInfo2: {
+    url: String,
+    filename: String,
+  },
 });
 
 userSchema.plugin(uniqueValidator);

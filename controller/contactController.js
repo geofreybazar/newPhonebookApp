@@ -20,11 +20,28 @@ async function getContactInfo (_req,res,next) {
    
 };
 
+async function getFavorites(req,res,next) {
+    try {
+        const decodedToken = jwt.verify(getTokenFrom(req), config.JWT_SECRET);
+    
+        const contacts = await Contact.find({ userId: decodedToken.id, favorite: true}).populate(
+          "userId",
+          {
+            username: 1,
+            name: 1,
+          }
+        );
+        return res.json(contacts);
+      } catch (error) {
+        next(error);
+      }
+}
+
 async function getContacts(req, res, next) {
     try {
       const decodedToken = jwt.verify(getTokenFrom(req), config.JWT_SECRET);
   
-      const contacts = await Contact.find({ userId: decodedToken.id }).populate(
+      const contacts = await Contact.find({ userId: decodedToken.id}).populate(
         "userId",
         {
           username: 1,
@@ -42,11 +59,11 @@ async function getContact (req,res, next) {
 
     try {
         const decodedToken = jwt.verify(getTokenFrom(req), config.JWT_SECRET);
-
+        
         if (!decodedToken.id) {
           return res.status(401).json({ error: "token invalid" });
         }
-
+        
         const contact = await Contact.findById(id);
         if (!contact) return res.status(404).json({message: "Contact not Found!"});             
         return res.json(contact);              
@@ -78,12 +95,9 @@ async function deleteContact(req, res, next) {
     }
   }
 
-
-
 async function createContact (req,res,next) {
     const body = req.body; 
-    const file = req.file;
-    console.log(file)
+    const file = req.file;  
 
     try{
     const decodedToken = jwt.verify(getTokenFrom(req), config.JWT_SECRET);
@@ -106,7 +120,6 @@ async function createContact (req,res,next) {
         address: "Enter Address",
         emailAdd: "Enter a valid email address",
         number: "Enter a valid mobile number",
-        
     };
     
     for (const [field, errorMessage] of Object.entries(errors)) {
@@ -141,10 +154,74 @@ async function createContact (req,res,next) {
    
 };
 
+
 async function updateContact (req,res,next) {
+  const id = req.params.id;
+  const body = req.body;   
+  const file = req.file;  
+  console.log(body);
+
+  try{
+      const decodedToken = jwt.verify(getTokenFrom(req), config.JWT_SECRET);
+      if (!decodedToken.id) {
+        return res.status(401).json({ error: "token invalid" });
+      }
+      
+      if (file) {
+        
+        const photoRef = ref(storage, body.photoInfo);
+        await deleteObject(photoRef);
+
+        const photoInfo = await uploadFile(file)
+        const updatedContact = {
+          firstName: body.firstName,
+          lastName: body.lastName,
+          address: body.address,
+          emailAdd: body.emailAdd,
+          number: body.number,
+          favorite: body.favorite,
+          photoInfo,
+        };      
+
+        const returnedContact = await Contact.findByIdAndUpdate(id, updatedContact, { 
+            new: true,
+            runValidators: true,
+            context: "query",
+        });        
+        if(!returnedContact){
+            res.status(404).send({error: "Contact not found!"})
+        };
+        res.status(200).json(returnedContact);
+        } else {
+          const updatedContact = {
+          firstName: body.firstName,
+          lastName: body.lastName,
+          address: body.address,
+          emailAdd: body.emailAdd,
+          number: body.number,
+          favorite: body.favorite,
+          photoInfo: body.photoInfo,
+        }
+          const returnedContact = await Contact.findByIdAndUpdate(id, updatedContact, { 
+          new: true,
+          runValidators: true,
+          context: "query",
+        });
+    
+        if(!returnedContact){ 
+            res.status(404).send({error: "Contact not found!"})
+        }
+        res.status(200).json(returnedContact);
+        
+        }}catch(error){
+           next(error);
+      };   
+}
+
+async function toggleFavorite (req,res,next) {
     const id = req.params.id;
     const {firstName,lastName,address,emailAdd, number, favorite} = req.body;
-
+   
     try{
 
         const decodedToken = jwt.verify(getTokenFrom(req), config.JWT_SECRET);
@@ -175,9 +252,7 @@ async function updateContact (req,res,next) {
             res.status(200).json(returnedContact);
     }catch(error){
     next(error);
-    }
-
-   
+    };   
 }
 
 function isValidEmail(email) {
@@ -192,5 +267,7 @@ export default {
     getContact,
     deleteContact,
     createContact,
+    toggleFavorite,
+    getFavorites,
     updateContact,
 }

@@ -23,7 +23,7 @@ app.use(morgan(":method :url :status :body"));
 app.use(express.json());
 app.use(express.static("dist"));
 
-app.use("/users", userRouter);
+app.use("/users", upload.single("image"), userRouter);
 app.use("/contacts", upload.single("image"),contactRouter);
 
 app.use(unknownEndpoint);
